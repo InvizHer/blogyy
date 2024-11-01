@@ -1,15 +1,15 @@
 // Load article content
-async function loadArticle() {
+function loadArticle() {
     const urlParams = new URLSearchParams(window.location.search);
-    const articleId = urlParams.get('id');
+    const articleTitle = urlParams.get('title');
     
-    if (!articleId) {
+    if (!articleTitle) {
         window.location.href = 'index.html';
         return;
     }
     
-    const articles = await loadArticles();
-    const article = articles.find(a => a.id === articleId);
+    const articles = loadArticles();
+    const article = articles.find(a => generateSlug(a.title) === articleTitle);
     
     if (!article) {
         window.location.href = 'index.html';
@@ -17,21 +17,23 @@ async function loadArticle() {
     }
     
     displayArticle(article);
-    loadComments(articleId);
+    loadComments(generateSlug(article.title));
     displayRelatedArticles(article, articles);
+    updatePageTitle(article.title);
 }
 
 // Display article content
 function displayArticle(article) {
     const container = document.getElementById('articleContent');
+    if (!container) return;
     
     container.innerHTML = `
         <div class="article-header">
             <h1>${article.title}</h1>
             <div class="article-meta">
-                <span>${formatDate(article.date)}</span>
-                <span>${article.category}</span>
-                <span>${article.author}</span>
+                <span class="date">${formatDate(article.date)}</span>
+                <span class="author">By ${article.author}</span>
+                <span class="category">${article.category}</span>
             </div>
         </div>
         <img class="article-image" src="${article.image}" alt="${article.title}">
@@ -41,78 +43,22 @@ function displayArticle(article) {
         <div class="article-tags">
             ${article.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
         </div>
+        <div class="article-actions">
+            <button onclick="shareArticle('twitter')" class="share-btn twitter">
+                <i class="fab fa-twitter"></i> Share on Twitter
+            </button>
+            <button onclick="shareArticle('facebook')" class="share-btn facebook">
+                <i class="fab fa-facebook"></i> Share on Facebook
+            </button>
+            <button onclick="shareArticle('linkedin')" class="share-btn linkedin">
+                <i class="fab fa-linkedin"></i> Share on LinkedIn
+            </button>
+        </div>
     `;
 }
 
-// Load and display comments
-function loadComments(articleId) {
-    const comments = JSON.parse(localStorage.getItem(`comments_${articleId}`)) || [];
-    displayComments(comments);
-}
-
-// Display comments
-function displayComments(comments) {
-    const container = document.getElementById('commentsList');
-    container.innerHTML = '';
-    
-    comments.forEach(comment => {
-        const commentElement = document.createElement('div');
-        commentElement.className = 'comment';
-        commentElement.innerHTML = `
-            <div class="comment-header">
-                <span>${comment.author}</span>
-                <span>${formatDate(comment.date)}</span>
-            </div>
-            <div class="comment-content">
-                ${comment.content}
-            </div>
-        `;
-        container.appendChild(commentElement);
-    });
-}
-
-// Submit new comment
-function submitComment() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const articleId = urlParams.get('id');
-    const commentText = document.getElementById('commentText').value;
-    
-    if (!commentText.trim()) return;
-    
-    const comment = {
-        author: 'Anonymous User', // Could be enhanced with user authentication
-        content: commentText,
-        date: new Date().toISOString()
-    };
-    
-    const comments = JSON.parse(localStorage.getItem(`comments_${articleId}`)) || [];
-    comments.push(comment);
-    localStorage.setItem(`comments_${articleId}`, JSON.stringify(comments));
-    
-    displayComments(comments);
-    document.getElementById('commentText').value = '';
-}
-
-// Display related articles
-function displayRelatedArticles(currentArticle, articles) {
-    const related = articles
-        .filter(article => 
-            article.id !== currentArticle.id &&
-            (article.category === currentArticle.category ||
-             article.tags.some(tag => currentArticle.tags.includes(tag)))
-        )
-        .slice(0, 3);
-    
-    const container = document.getElementById('relatedArticles');
-    
-    related.forEach(article => {
-        const articleElement = createArticleCard(article);
-        container.appendChild(articleElement);
-    });
-}
-
-// Social sharing functionality
-function share(platform) {
+// Share article
+function shareArticle(platform) {
     const url = window.location.href;
     const title = document.querySelector('h1').textContent;
     
@@ -125,7 +71,68 @@ function share(platform) {
     window.open(shareUrls[platform], '_blank', 'width=600,height=400');
 }
 
-// Initialize article page if we're on an article page
+// Load and display comments
+function loadComments(articleSlug) {
+    const comments = JSON.parse(localStorage.getItem(`comments_${articleSlug}`)) || [];
+    displayComments(comments);
+}
+
+// Display comments
+function displayComments(comments) {
+    const container = document.getElementById('commentsList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (comments.length === 0) {
+        container.innerHTML = '<p>No comments yet. Be the first to comment!</p>';
+        return;
+    }
+    
+    comments.forEach(comment => {
+        const commentElement = document.createElement('div');
+        commentElement.className = 'comment';
+        commentElement.innerHTML = `
+            <div class="comment-header">
+                <span class="comment-author">${comment.author}</span>
+                <span class="comment-date">${formatDate(comment.date)}</span>
+            </div>
+            <div class="comment-content">
+                ${comment.content}
+            </div>
+        `;
+        container.appendChild(commentElement);
+    });
+}
+
+// Submit new comment
+function submitComment() {
+    const commentText = document.getElementById('commentText').value;
+    if (!commentText.trim()) return;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const articleTitle = urlParams.get('title');
+    
+    const comment = {
+        author: 'Anonymous User',
+        content: commentText,
+        date: new Date().toISOString()
+    };
+    
+    const comments = JSON.parse(localStorage.getItem(`comments_${articleTitle}`)) || [];
+    comments.push(comment);
+    localStorage.setItem(`comments_${articleTitle}`, JSON.stringify(comments));
+    
+    displayComments(comments);
+    document.getElementById('commentText').value = '';
+}
+
+// Update page title
+function updatePageTitle(articleTitle) {
+    document.title = `${articleTitle} - My Blog`;
+}
+
+// Initialize article page
 if (document.getElementById('articleContent')) {
     loadArticle();
 }
