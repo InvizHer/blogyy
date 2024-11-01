@@ -9,8 +9,8 @@ let currentFilters = {
 };
 
 // Initialize the blog
-async function initializeBlog() {
-    const articles = await loadArticles();
+function initializeBlog() {
+    const articles = loadArticles(); // Now synchronous
     filteredArticles = [...articles];
     
     displayFeaturedArticles(articles);
@@ -23,6 +23,9 @@ async function initializeBlog() {
 function displayFeaturedArticles(articles) {
     const featured = articles.filter(article => article.featured);
     const container = document.getElementById('featuredArticles');
+    if (!container) return;
+    
+    container.innerHTML = ''; // Clear existing content
     
     featured.forEach(article => {
         const articleElement = createArticleCard(article, true);
@@ -57,43 +60,6 @@ function createArticleCard(article, isFeatured = false) {
     return card;
 }
 
-// Setup filters
-function setupFilters(articles) {
-    const categories = [...new Set(articles.map(article => article.category))];
-    const tags = [...new Set(articles.flatMap(article => article.tags))];
-    
-    const categoriesContainer = document.getElementById('categories');
-    const tagsContainer = document.getElementById('tags');
-    
-    categories.forEach(category => {
-        const button = document.createElement('button');
-        button.className = 'filter-tag';
-        button.textContent = category;
-        button.addEventListener('click', () => {
-            currentFilters.category = currentFilters.category === category ? null : category;
-            applyFilters();
-            button.classList.toggle('active');
-        });
-        categoriesContainer.appendChild(button);
-    });
-    
-    tags.forEach(tag => {
-        const button = document.createElement('button');
-        button.className = 'filter-tag';
-        button.textContent = tag;
-        button.addEventListener('click', () => {
-            if (currentFilters.tags.includes(tag)) {
-                currentFilters.tags = currentFilters.tags.filter(t => t !== tag);
-            } else {
-                currentFilters.tags.push(tag);
-            }
-            applyFilters();
-            button.classList.toggle('active');
-        });
-        tagsContainer.appendChild(button);
-    });
-}
-
 // Apply filters
 function applyFilters() {
     const articles = loadArticles();
@@ -117,6 +83,8 @@ function applyFilters() {
 // Search functionality
 function searchArticles() {
     const searchInput = document.getElementById('searchInput');
+    if (!searchInput) return;
+    
     currentFilters.search = searchInput.value;
     applyFilters();
 }
@@ -124,6 +92,8 @@ function searchArticles() {
 // Display articles with pagination
 function displayArticles() {
     const container = document.getElementById('articles');
+    if (!container) return;
+    
     container.innerHTML = '';
     
     const startIndex = (currentPage - 1) * articlesPerPage;
@@ -136,10 +106,55 @@ function displayArticles() {
     });
 }
 
+// Setup filters
+function setupFilters(articles) {
+    const categories = [...new Set(articles.map(article => article.category))];
+    const tags = [...new Set(articles.flatMap(article => article.tags))];
+    
+    const categoriesContainer = document.getElementById('categories');
+    const tagsContainer = document.getElementById('tags');
+    
+    if (categoriesContainer) {
+        categoriesContainer.innerHTML = ''; // Clear existing content
+        categories.forEach(category => {
+            const button = document.createElement('button');
+            button.className = 'filter-tag';
+            button.textContent = category;
+            button.addEventListener('click', () => {
+                currentFilters.category = currentFilters.category === category ? null : category;
+                applyFilters();
+                button.classList.toggle('active');
+            });
+            categoriesContainer.appendChild(button);
+        });
+    }
+    
+    if (tagsContainer) {
+        tagsContainer.innerHTML = ''; // Clear existing content
+        tags.forEach(tag => {
+            const button = document.createElement('button');
+            button.className = 'filter-tag';
+            button.textContent = tag;
+            button.addEventListener('click', () => {
+                if (currentFilters.tags.includes(tag)) {
+                    currentFilters.tags = currentFilters.tags.filter(t => t !== tag);
+                } else {
+                    currentFilters.tags.push(tag);
+                }
+                applyFilters();
+                button.classList.toggle('active');
+            });
+            tagsContainer.appendChild(button);
+        });
+    }
+}
+
 // Setup pagination
 function setupPagination() {
-    const totalPages = Math.ceil(filteredArticles.length / articlesPerPage);
     const pagination = document.getElementById('pagination');
+    if (!pagination) return;
+    
+    const totalPages = Math.ceil(filteredArticles.length / articlesPerPage);
     pagination.innerHTML = '';
     
     for (let i = 1; i <= totalPages; i++) {
