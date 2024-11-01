@@ -3,51 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Article - My Blog</title>
+    <title>Article Title - My Blog</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/article.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <header>
         <nav>
-            <div class="logo">
-                <a href="index.html">My Blog</a>
+            <div class="logo">My Blog</div>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="#" onclick="showCategories()">Categories</a>
             </div>
         </nav>
     </header>
 
     <main class="article-container">
         <article id="articleContent"></article>
-
-        <div class="article-meta">
-            <div class="author-info" id="authorInfo"></div>
-            <div class="social-share">
-                <button onclick="shareOnFacebook()">Share on Facebook</button>
-                <button onclick="shareOnTwitter()">Share on Twitter</button>
-                <button onclick="shareOnLinkedIn()">Share on LinkedIn</button>
-            </div>
+        
+        <!-- Social Sharing -->
+        <div class="share-buttons">
+            <button onclick="share('twitter')"><i class="fab fa-twitter"></i> Tweet</button>
+            <button onclick="share('facebook')"><i class="fab fa-facebook"></i> Share</button>
+            <button onclick="share('linkedin')"><i class="fab fa-linkedin"></i> Post</button>
         </div>
 
-        <div class="related-articles" id="relatedArticles">
-            <h3>Related Articles</h3>
-            <div class="related-grid"></div>
-        </div>
-
-        <div class="comments-section">
+        <!-- Comments Section -->
+        <section class="comments-section">
             <h3>Comments</h3>
             <div class="comment-form">
-                <input type="text" id="commentName" placeholder="Your name">
-                <textarea id="commentContent" placeholder="Write your comment..."></textarea>
-                <button onclick="submitComment()">Post Comment</button>
+                <textarea id="commentText" placeholder="Write your comment..."></textarea>
+                <button onclick="submitComment()">Submit Comment</button>
             </div>
             <div id="commentsList"></div>
-        </div>
+        </section>
+
+        <!-- Related Articles -->
+        <section class="related-articles">
+            <h3>Related Articles</h3>
+            <div id="relatedArticles" class="articles-grid"></div>
+        </section>
     </main>
 
     <footer>
-        <p>&copy; 2024 My Blog. All rights reserved.</p>
+        <!-- Same footer as index.html -->
     </footer>
 
-    <script src="js/data.js"></script>
-    <script src="js/article.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/articles.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
