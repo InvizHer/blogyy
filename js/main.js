@@ -1,382 +1,159 @@
-class DataService {
-    static async getArticles() {
-        try {
-            const response = await fetch('/data/articles.json');
-            const data = await response.json();
-            return data.articles;
-        } catch (error) {
-            console.error('Error loading articles:', error);
-            return [];
-        }
-    }
-
-    static async getArticleById(id) {
-        try {
-            const articles = await this.getArticles();
-            return articles.find(article => article.id === parseInt(id));
-        } catch (error) {
-            console.error('Error loading article:', error);
-            return null;
-        }
-    }
-
-    static async getComments(articleId) {
-        try {
-            const response = await fetch('/data/comments.json');
-            const data = await response.json();
-            return data.comments[articleId] || [];
-        } catch (error) {
-            console.error('Error loading comments:', error);
-            return [];
-        }
-    }
-
-    static async searchArticles(query) {
-        try {
-            const articles = await this.getArticles();
-            return articles.filter(article => 
-                article.title.toLowerCase().includes(query.toLowerCase()) ||
-                article.content.toLowerCase().includes(query.toLowerCase())
-            );
-        } catch (error) {
-            console.error('Error searching articles:', error);
-            return [];
-        }
-    }
-
-    static async getArticlesByCategory(category) {
-        try {
-            const articles = await this.getArticles();
-            return category ? articles.filter(article => article.category === category) : articles;
-        } catch (error) {
-            console.error('Error filtering articles by category:', error);
-            return [];
-        }
-    }
-
-    static async getArticlesByTag(tag) {
-        try {
-            const articles = await this.getArticles();
-            return articles.filter(article => article.tags.includes(tag));
-        } catch (error) {
-            console.error('Error filtering articles by tag:', error);
-            return [];
-        }
-    }
-
-    static async getAllTags() {
-        try {
-            const articles = await this.getArticles();
-            const tagsSet = new Set();
-            articles.forEach(article => {
-                article.tags.forEach(tag => tagsSet.add(tag));
-            });
-            return Array.from(tagsSet);
-        } catch (error) {
-            console.error('Error getting tags:', error);
-            return [];
-        }
-    }
-
-    static async getRelatedArticles(articleId, limit = 3) {
-        try {
-            const currentArticle = await this.getArticleById(articleId);
-            if (!currentArticle) return [];
-
-            const articles = await this.getArticles();
-            return articles
-                .filter(article => article.id !== parseInt(articleId))
-                .filter(article => 
-                    article.category === currentArticle.category ||
-                    article.tags.some(tag => currentArticle.tags.includes(tag))
-                )
-                .sort((a, b) => {
-                    const aCommonTags = a.tags.filter(tag => currentArticle.tags.includes(tag)).length;
-                    const bCommonTags = b.tags.filter(tag => currentArticle.tags.includes(tag)).length;
-                    return bCommonTags - aCommonTags;
-                })
-                .slice(0, limit);
-        } catch (error) {
-            console.error('Error getting related articles:', error);
-            return [];
-        }
-    }
-
-    static async getFeaturedArticle() {
-        try {
-            const articles = await this.getArticles();
-            // Get the most recent article as featured
-            return articles.sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-        } catch (error) {
-            console.error('Error getting featured article:', error);
-            return null;
-        }
-    }
-
-    static formatDate(dateString) {
-        const options = { year: 'numeric', month: 'long', day: 'numeric' };
-        return new Date(dateString).toLocaleDateString(undefined, options);
-    }
-}
-
-
-// Pagination state
+// Global variables
 let currentPage = 1;
-const articlesPerPage = 6;
-let currentArticles = [];
+const articlesPerPage = 9;
+let filteredArticles = [];
+let currentFilters = {
+    category: null,
+    tags: [],
+    search: ''
+};
 
-// Initialize page
-document.addEventListener('DOMContentLoaded', async () => {
-    await initializePage();
-});
-
-async function initializePage() {
-    await loadFeaturedArticle();
-    await loadAllArticles();
-    await initializeTags();
-}
-
-async function loadFeaturedArticle() {
-    const featuredArticle = await DataService.getFeaturedArticle();
-    if (featuredArticle) {
-        const featuredSection = document.getElementById('featuredArticle');
-        featuredSection.innerHTML = `
-            <article class="featured-card">
-                <img src="${featuredArticle.image}" alt="${featuredArticle.title}" class="featured-image">
-                <div class="featured-content">
-                    <span class="featured-label">Featured</span>
-                    <h2>${featuredArticle.title}</h2>
-                    <p>${featuredArticle.excerpt}</p>
-                    <div class="article-meta">
-                        <span class="author">By ${featuredArticle.author}</span>
-                        <span class="date">${DataService.formatDate(featuredArticle.date)}</span>
-                        <span class="read-time">${featuredArticle.readTime} read</span>
-                    </div>
-                    <a href="article.html?id=${featuredArticle.id}" class="read-more">Read More</a>
-                </div>
-            </article>
-        `;
-    }
-}
-
-async function loadAllArticles(articles = null) {
-    try {
-        currentArticles = articles || await DataService.getArticles();
-        displayPaginatedArticles();
-    } catch (error) {
-        console.error('Error loading articles:', error);
-        document.getElementById('articles').innerHTML = '<p>Error loading articles. Please try again later.</p>';
-    }
-}
-
-function displayPaginatedArticles() {
-    const startIndex = (currentPage - 1) * articlesPerPage;
-    const endIndex = startIndex + articlesPerPage;
-    const paginatedArticles = currentArticles.slice(startIndex, endIndex);
+// Initialize the blog
+async function initializeBlog() {
+    const articles = await loadArticles();
+    filteredArticles = [...articles];
     
-    const articlesContainer = document.getElementById('articles');
-    articlesContainer.innerHTML = paginatedArticles.map(article => createArticleCard(article)).join('');
+    displayFeaturedArticles(articles);
+    setupFilters(articles);
+    displayArticles();
+    setupPagination();
+}
+
+// Display featured articles
+function displayFeaturedArticles(articles) {
+    const featured = articles.filter(article => article.featured);
+    const container = document.getElementById('featuredArticles');
     
-    updatePaginationControls();
-}
-
-function createArticleCard(article) {
-    return `
-        <div class="article-card">
-            <img src="${article.image}" alt="${article.title}" class="article-image">
-            <div class="article-content">
-                <div class="article-category">${article.category}</div>
-                <h3>${article.title}</h3>
-                <p>${article.excerpt}</p>
-                <div class="article-meta">
-                    <span class="author">By ${article.author}</span>
-                    <span class="date">${DataService.formatDate(article.date)}</span>
-                    <span class="read-time">${article.readTime} read</span>
-                </div>
-                <div class="article-tags">
-                    ${article.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-                </div>
-                <a href="article.html?id=${article.id}" class="read-more">Read More</a>
-            </div>
-        </div>
-    `;
-}
-
-async function initializeTags() {
-    const tags = await DataService.getAllTags();
-    const tagsContainer = document.getElementById('tagsFilter');
-    tagsContainer.innerHTML = tags.map(tag => 
-        `<span class="tag" onclick="filterByTag('${tag}')">${tag}</span>`
-    ).join('');
-}
-
-async function searchArticles() {
-    const query = document.getElementById('searchInput').value;
-    if (query.trim()) {
-        const results = await DataService.searchArticles(query);
-        currentPage = 1;
-        await loadAllArticles(results);
-    }
-}
-
-async function filterByCategory() {
-    const category = document.getElementById('categoryFilter').value;
-    const filteredArticles = await DataService.getArticlesByCategory(category);
-    currentPage = 1;
-    await loadAllArticles(filteredArticles);
-}
-
-async function filterByTag(tag) {
-    const filteredArticles = await DataService.getArticlesByTag(tag);
-    currentPage = 1;
-    await loadAllArticles(filteredArticles);
-    
-    // Update active tag visual
-    document.querySelectorAll('.tag').forEach(tagElement => {
-        tagElement.classList.toggle('active', tagElement.textContent === tag);
+    featured.forEach(article => {
+        const articleElement = createArticleCard(article, true);
+        container.appendChild(articleElement);
     });
 }
 
-function updatePaginationControls() {
-    const totalPages = Math.ceil(currentArticles.length / articlesPerPage);
-    document.getElementById('currentPage').textContent = `Page ${currentPage} of ${totalPages}`;
+// Create article card element
+function createArticleCard(article, isFeatured = false) {
+    const card = document.createElement('div');
+    card.className = `article-card ${isFeatured ? 'featured' : ''}`;
     
-    document.getElementById('prevBtn').disabled = currentPage === 1;
-    document.getElementById('nextBtn').disabled = currentPage === totalPages;
-}
-
-function previousPage() {
-    if (currentPage > 1) {
-        currentPage--;
-        displayPaginatedArticles();
-    }
-}
-
-function nextPage() {
-    const totalPages = Math.ceil(currentArticles.length / articlesPerPage);
-    if (currentPage < totalPages) {
-        currentPage++;
-        displayPaginatedArticles();
-    }
-}
-
-// Export functions for global use
-window.searchArticles = searchArticles;
-window.filterByCategory = filterByCategory;
-window.filterByTag = filterByTag;
-window.previousPage = previousPage;
-window.nextPage = nextPage;
-
-
-document.addEventListener('DOMContentLoaded', async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const articleId = urlParams.get('id');
+    card.innerHTML = `
+        <img src="${article.image}" alt="${article.title}">
+        <div class="article-content">
+            <h3>${article.title}</h3>
+            <div class="article-meta">
+                <span>${formatDate(article.date)}</span>
+                <span>${article.category}</span>
+            </div>
+            <p>${article.excerpt}</p>
+            <div class="article-tags">
+                ${article.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+            </div>
+        </div>
+    `;
     
-    if (articleId) {
-        await loadArticle(parseInt(articleId));
-        await loadComments(articleId);
-        await loadRelatedArticles(articleId);
-    } else {
-        window.location.href = 'index.html';
-    }
-});
+    card.addEventListener('click', () => {
+        window.location.href = `article.html?id=${article.id}`;
+    });
+    
+    return card;
+}
 
-async function loadArticle(articleId) {
-    try {
-        const article = await DataService.getArticleById(articleId);
-        if (!article) {
-            window.location.href = 'index.html';
-            return;
-        }
+// Setup filters
+function setupFilters(articles) {
+    const categories = [...new Set(articles.map(article => article.category))];
+    const tags = [...new Set(articles.flatMap(article => article.tags))];
+    
+    const categoriesContainer = document.getElementById('categories');
+    const tagsContainer = document.getElementById('tags');
+    
+    categories.forEach(category => {
+        const button = document.createElement('button');
+        button.className = 'filter-tag';
+        button.textContent = category;
+        button.addEventListener('click', () => {
+            currentFilters.category = currentFilters.category === category ? null : category;
+            applyFilters();
+            button.classList.toggle('active');
+        });
+        categoriesContainer.appendChild(button);
+    });
+    
+    tags.forEach(tag => {
+        const button = document.createElement('button');
+        button.className = 'filter-tag';
+        button.textContent = tag;
+        button.addEventListener('click', () => {
+            if (currentFilters.tags.includes(tag)) {
+                currentFilters.tags = currentFilters.tags.filter(t => t !== tag);
+            } else {
+                currentFilters.tags.push(tag);
+            }
+            applyFilters();
+            button.classList.toggle('active');
+        });
+        tagsContainer.appendChild(button);
+    });
+}
 
-        document.title = `${article.title} - My Blog`;
+// Apply filters
+function applyFilters() {
+    const articles = loadArticles();
+    
+    filteredArticles = articles.filter(article => {
+        const categoryMatch = !currentFilters.category || article.category === currentFilters.category;
+        const tagsMatch = currentFilters.tags.length === 0 || 
+            currentFilters.tags.every(tag => article.tags.includes(tag));
+        const searchMatch = !currentFilters.search || 
+            article.title.toLowerCase().includes(currentFilters.search.toLowerCase()) ||
+            article.content.toLowerCase().includes(currentFilters.search.toLowerCase());
         
-        const articleContent = document.getElementById('articleContent');
-        articleContent.innerHTML = `
-            <div class="article-header">
-                <div class="article-meta">
-                    <span class="category">${article.category}</span>
-                    <span class="date">${DataService.formatDate(article.date)}</span>
-                    <span class="read-time">${article.readTime} read</span>
-                </div>
-                <h1>${article.title}</h1>
-                <div class="article-tags">
-                    ${article.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-                </div>
-            </div>
-            <img src="${article.image}" alt="${article.title}" class="article-main-image">
-            <div class="article-body">
-                ${article.content}
-            </div>
-        `;
+        return categoryMatch && tagsMatch && searchMatch;
+    });
+    
+    currentPage = 1;
+    displayArticles();
+    setupPagination();
+}
 
-        const authorInfo = document.getElementById('authorInfo');
-        authorInfo.innerHTML = `
-            <div class="author-bio">
-                <h3>Written by ${article.author}</h3>
-                <p class="publish-date">Published on ${DataService.formatDate(article.date)}</p>
-            </div>
-        `;
-    } catch (error) {
-        console.error('Error loading article:', error);
-        articleContent.innerHTML = '<p>Error loading article. Please try again later.</p>';
+// Search functionality
+function searchArticles() {
+    const searchInput = document.getElementById('searchInput');
+    currentFilters.search = searchInput.value;
+    applyFilters();
+}
+
+// Display articles with pagination
+function displayArticles() {
+    const container = document.getElementById('articles');
+    container.innerHTML = '';
+    
+    const startIndex = (currentPage - 1) * articlesPerPage;
+    const endIndex = startIndex + articlesPerPage;
+    const paginatedArticles = filteredArticles.slice(startIndex, endIndex);
+    
+    paginatedArticles.forEach(article => {
+        const articleElement = createArticleCard(article);
+        container.appendChild(articleElement);
+    });
+}
+
+// Setup pagination
+function setupPagination() {
+    const totalPages = Math.ceil(filteredArticles.length / articlesPerPage);
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+    
+    for (let i = 1; i <= totalPages; i++) {
+        const button = document.createElement('button');
+        button.textContent = i;
+        button.className = i === currentPage ? 'active' : '';
+        button.addEventListener('click', () => {
+            currentPage = i;
+            displayArticles();
+            setupPagination();
+        });
+        pagination.appendChild(button);
     }
 }
 
-async function loadComments(articleId) {
-    try {
-        const comments = await DataService.getComments(articleId);
-        const commentsList = document.getElementById('commentsList');
-        commentsList.innerHTML = comments.map(comment => `
-            <div class="comment">
-                <div class="comment-header">
-                    <strong>${comment.author}</strong>
-                    <span class="comment-date">${DataService.formatDate(comment.date)}</span>
-                </div>
-                <p>${comment.content}</p>
-            </div>
-        `).join('');
-    } catch (error) {
-        console.error('Error loading comments:', error);
-    }
-}
-
-async function loadRelatedArticles(articleId) {
-    try {
-        const relatedArticles = await DataService.getRelatedArticles(articleId);
-        const relatedGrid = document.querySelector('.related-grid');
-        relatedGrid.innerHTML = relatedArticles.map(article => `
-            <div class="related-card">
-                <img src="${article.image}" alt="${article.title}">
-                <div class="related-content">
-                    <h4>${article.title}</h4>
-                    <p>${article.excerpt.substring(0, 100)}...</p>
-                    <a href="article.html?id=${article.id}" class="read-more">Read More</a>
-                </div>
-            </div>
-        `).join('');
-    } catch (error) {
-        console.error('Error loading related articles:', error);
-    }
-}
-
-function shareOnFacebook() {
-    const url = encodeURIComponent(window.location.href);
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
-}
-
-function shareOnTwitter() {
-    const url = encodeURIComponent(window.location.href);
-    const title = encodeURIComponent(document.title);
-    window.open(`https://twitter.com/intent/tweet?url=${url}&text=${title}`, '_blank');
-}
-
-function shareOnLinkedIn() {
-    const url = encodeURIComponent(window.location.href);
-    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank');
-}
-
-// Export functions for global use
-window.shareOnFacebook = shareOnFacebook;
-window.shareOnTwitter = shareOnTwitter;
-window.shareOnLinkedIn = shareOnLinkedIn;
+// Initialize blog when DOM is loaded
+document.addEventListener('DOMContentLoaded', initializeBlog);
