@@ -1,1 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article - My Blog</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">
+                <a href="index.html">My Blog</a>
+            </div>
+        </nav>
+    </header>
 
+    <main class="article-container">
+        <article id="articleContent"></article>
+
+        <div class="article-meta">
+            <div class="author-info" id="authorInfo"></div>
+            <div class="social-share">
+                <button onclick="shareOnFacebook()">Share on Facebook</button>
+                <button onclick="shareOnTwitter()">Share on Twitter</button>
+                <button onclick="shareOnLinkedIn()">Share on LinkedIn</button>
+            </div>
+        </div>
+
+        <div class="related-articles" id="relatedArticles">
+            <h3>Related Articles</h3>
+            <div class="related-grid"></div>
+        </div>
+
+        <div class="comments-section">
+            <h3>Comments</h3>
+            <div class="comment-form">
+                <input type="text" id="commentName" placeholder="Your name">
+                <textarea id="commentContent" placeholder="Write your comment..."></textarea>
+                <button onclick="submitComment()">Post Comment</button>
+            </div>
+            <div id="commentsList"></div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 My Blog. All rights reserved.</p>
+    </footer>
+
+    <script src="js/data.js"></script>
+    <script src="js/article.js"></script>
+</body>
+</html>
