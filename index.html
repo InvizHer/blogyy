@@ -1,1 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Blog</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">My Blog</div>
+            <div class="nav-controls">
+                <div class="search-container">
+                    <input type="text" id="searchInput" placeholder="Search articles...">
+                    <button onclick="searchArticles()">Search</button>
+                </div>
+                <div class="filter-container">
+                    <select id="categoryFilter" onchange="filterByCategory()">
+                        <option value="">All Categories</option>
+                        <option value="technology">Technology</option>
+                        <option value="art">Art</option>
+                        <option value="lifestyle">Lifestyle</option>
+                    </select>
+                </div>
+            </div>
+        </nav>
+    </header>
 
+    <main>
+        <div id="featuredArticle" class="featured-article"></div>
+        <div class="tags-container" id="tagsFilter"></div>
+        <div id="articles" class="articles-grid"></div>
+        <div class="pagination">
+            <button onclick="previousPage()" id="prevBtn">Previous</button>
+            <span id="currentPage">Page 1</span>
+            <button onclick="nextPage()" id="nextBtn">Next</button>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 My Blog. All rights reserved.</p>
+    </footer>
+
+    <script src="js/data.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
