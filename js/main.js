@@ -119,8 +119,6 @@ class DataService {
     }
 }
 
-// Export the DataService class
-export default DataService;
 
 // Pagination state
 let currentPage = 1;
